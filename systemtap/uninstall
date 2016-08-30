@@ -1,0 +1,54 @@
+#! /bin/bash
+
+# Author : wenxueliu
+#
+
+check_privilege() {
+    if [[ $UID != 0 ]]
+    then
+        INFO " This script neeeds to be run with sudo, like this:"
+        echo -e "\n  sudo $0 $*\n"
+        exit 1
+    fi
+}
+
+check_kernel() {
+
+    if [[ ! -f /etc/redhat-release ]]
+    then
+        echo "sorry, only redhat and centos support now."
+        exit 1;
+    fi
+    local version=`yum info kernel-devel | grep Version | awk '{print $3}'`
+    local arch=`yum info kernel-devel | grep Arch | awk '{print $3}'`
+    local release=`yum info kernel-devel | grep Release | awk '{print $3}'`
+    local kernel_devel=${version}-${release}.${arch}
+    if [[ $kernel_devel != `uname -r` ]]; then
+        echo "your kernel version is `uname -r`"
+        echo "the kernel version you should use is $kernel-devel"
+        echo "run with $ yum update and reboot, then run this script"
+        exit 1
+    fi
+}
+
+check_version() {
+    if grep "release 6" /etc/redhat-release >> /dev/null;
+    then
+        os_version=7
+    elif grep "release 6" /etc/redhat-release >> /dev/null;
+    then
+        os_version=6
+    else
+        echo "unsupport redhat version"
+        cat /etc/redhat-release
+        exit 1;
+    fi
+}
+
+check_privilege
+check_kernel
+check_version
+
+echo "check pass, continue...."
+
+rpm -e kernel-debug-debuginfo-${kernel_version}.rpm kernel-debuginfo-common-${machine}-${kernel_version}.rpm kernel-debuginfo-${kernel_version}.rpm
