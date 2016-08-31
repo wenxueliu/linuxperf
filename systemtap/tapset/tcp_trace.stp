@@ -1,0 +1,22 @@
+//stp -x PID tcp_trace.stp
+
+probe kernel.function("*@net/ipv4/tcp.c").call {
+    if (pid() == target())
+       printf("%s -> %s\n", thread_indent(3), probefunc());
+}
+
+probe kernel.function("*@net/ipv4/tcp_ipv4.c").call {
+    if (pid() == target())
+       printf("%s -> %s\n", thread_indent(3), probefunc());
+}
+
+probe kernel.function("*@net/ipv4/tcp_ipv4.c").return {
+    if (pid() == target())
+       printf("%s -> %s\n", thread_indent(-3), probefunc());
+}
+
+probe kernel.function("*@net/ipv4/tcp.c").return
+{
+    if (pid() == target())
+       printf("%s <- %s\n", thread_indent(-3), probefunc());
+}

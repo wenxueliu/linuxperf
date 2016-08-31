@@ -1,0 +1,63 @@
+global time_map, count_map, count_total, time_total
+probe begin {
+    printf("topsyscall will be run 5 s once time")
+    count_total = 0
+    time_total = 0
+}
+
+probe kernel.function("sys_*").return {
+    delta =  gettimeofday_us() - @entry(gettimeofday_us())
+    time_total += delta
+    count_total += 1
+    time_map[probefunc(),pid(),tid()] += delta
+    count_map[probefunc(),pid(),tid()] += 1
+}
+
+probe timer.s(1) {
+    printf(".");
+}
+probe timer.s(5) {
+    print_active()
+    delete count_total
+    delete time_total
+}
+
+function print_active() {
+    if (count_total <= 0)
+        count_total = 1
+    if (time_total <= 0)
+        time_total = 1
+    printf("%25s %10s %10s %10s %10s %10s %10s\n",
+            "name", "pid", "tid",
+            "duration/us", "time/%",
+            "count/us", "count/%");
+    foreach ([name,pid,tid] in count_map)
+        time_scaled = time_map[name,pid,tid] * 10000 / time_total
+        count_scaled = count_map[name,pid,tid] * 10000 / count_total
+        //printf("%25s %10d %10d %10d %3d.%02d%% %10d %3d.%02d%%\n",
+        //        name,
+        //        pid,
+        //        tid,
+        //        time_map[name,pid,tid],
+        //        time_scaled/100,
+        //        time_scaled%100,
+        //        count_map[name,pid,tid],
+        //        count_scaled/100,
+        //        count_scaled%100
+        //        )
+        printf("%25s %10d %10d %10d %3d.%02d%%\n",
+                name,
+                pid,
+                tid,
+                count_map[name,pid,tid],
+                count_scaled/100,
+                count_scaled%100
+                )
+    printf("total io operation %d ms %d times\n", time_total, count_total);
+}
+
+probe end {
+    print_active()
+    delete time_map
+    delete count_map
+}

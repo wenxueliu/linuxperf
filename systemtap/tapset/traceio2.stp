@@ -1,0 +1,27 @@
+#!/usr/bin/stap
+
+//cat /sys/block/sda/device/block/sda/sda1/dev
+//8:1
+//stap -v trace2.io 0x801
+
+//stat -c "0x%D" DIRECTORY
+//0x801
+//stap -v trace2.io 0x801
+
+global device_of_interest
+
+probe begin {
+  /* The following is not the most efficient way to do this.
+      One could directly put the result of usrdev2kerndev()
+      into device_of_interest.  However, want to test out
+      the other device functions */
+  dev = usrdev2kerndev($1)
+  device_of_interest = MKDEV(MAJOR(dev), MINOR(dev))
+}
+
+probe vfs.write, vfs.read
+{
+  if (dev == device_of_interest)
+    printf ("%s(%d) %s 0x%x\n",
+            execname(), pid(), ppfunc(), dev)
+}

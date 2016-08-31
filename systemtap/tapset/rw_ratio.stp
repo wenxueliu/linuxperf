@@ -1,0 +1,60 @@
+//only allow maxmum five functions once time
+global io_time_map, io_count_map, io_count_total, io_time_total
+
+probe begin {
+    printf("io ration will be run in the 10 s")
+    io_count_total = 0
+    io_time_total = 0
+}
+
+probe syscall.read.return {
+    if (pid() == target()) {
+        delta =  gettimeofday_us() - @entry(gettimeofday_us())
+        io_time_total += delta
+        io_count_total += 1
+        io_time_map[probefunc(),pid(),tid()] += delta
+        io_count_map[probefunc(),pid(),tid()] += 1
+    }
+}
+
+probe syscall.write.return {
+    if (pid() == target()) {
+        delta =  gettimeofday_us() - @entry(gettimeofday_us())
+        io_time_total += delta
+        io_count_total += 1
+        io_time_map[probefunc(),pid(),tid()] += delta
+        io_count_map[probefunc(),pid(),tid()] += 1
+    }
+}
+
+probe timer.s(1) {
+    printf(".");
+}
+probe timer.s(10) {
+    printf("\n")
+    exit()
+}
+
+probe end {
+    if (io_count_total <= 0)
+        io_count_total = 1
+    if (io_time_total <= 0)
+        io_time_total = 1
+    printf("%25s %10s %10s %10s %10s %10s %10s\n",
+            "name", "pid", "tid", 
+            "duration/us", "time_ratio/%",
+            "count/us", "count_ratio/%");
+    foreach ([name,pid,tid] in io_time_map)
+        printf("%25s %10d %10d %10d %10d%% %10d %10d%%\n",
+                name,
+                pid,
+                tid,
+                io_time_map[name,pid,tid],
+                io_time_map[name,pid,tid] * 100 / io_time_total,
+                io_count_map[name,pid,tid],
+                io_count_map[name,pid,tid] * 100 / io_count_total)
+    printf("total io operation %d ms %d times\n", io_time_total, io_count_total);
+
+    delete io_time_map
+    delete io_count_map
+}

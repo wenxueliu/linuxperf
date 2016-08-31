@@ -1,0 +1,10 @@
+probe syscall.* 
+{
+    if (pid() == target())
+        printf("%s -> %s\n", thread_indent(1), probefunc())
+}
+//probe syscall.*.return
+//{
+//    if (pid() == target())
+//        printf("%s <- %s\n", thread_indent(-1), probefunc())
+//}

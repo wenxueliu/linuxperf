@@ -1,0 +1,29 @@
+
+function trace(entry_p, extra) {
+    %( $# > 1 %? if (tid() in trace) %)
+    if (pid() == target()) {
+        printf("%25s %2s %30s %100s\n",
+                thread_indent(entry_p),
+                (entry_p>0 ? "->" : "<-"),
+                probefunc(),
+                extra)
+    }
+}
+
+%($# > 1 %?
+    global trace
+    probe kernel.function(@2).call {
+        trace[tid()] = 1
+    }
+    probe kernel.function(@2).return {
+        delete trace[tid()]
+    }
+%)
+
+probe kernel.function(@1).call {
+    trace(1, $$parms)
+}
+
+probe kernel.function(@1).return {
+    trace(-1, $$return)
+}

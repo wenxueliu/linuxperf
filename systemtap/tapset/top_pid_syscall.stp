@@ -1,0 +1,41 @@
+#!/usr/bin/stap
+#
+# This script continuously lists the top 20 systemcalls in the interval 
+# 5 seconds
+#
+
+global syscalls_count
+
+probe begin {
+  printf("Ctrl-C to exit and display result\n")
+  printf("will print in 5 s")
+}
+
+probe syscall.* {
+  syscalls_count[pid()] <<< 1
+}
+
+function print_systop () {
+  printf ("%10s %10s\n", "PID", "COUNT")
+  foreach (pid in syscalls_count- limit 20) {
+    printf("%10d%10d\n",
+            pid,
+            @count(syscalls_count[pid]))
+  }
+  delete syscalls_count
+}
+
+probe timer.s(1) {
+    printf(".");
+}
+
+probe timer.s(5) {
+  printf("\n")
+  print_systop ()
+  printf("--------------------------------------------------------------\n")
+  printf("will print in 5 s")
+}
+
+probe end {
+    delete syscalls_count
+}

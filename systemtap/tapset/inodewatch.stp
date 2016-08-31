@@ -1,0 +1,29 @@
+#!/usr/bin/stap
+
+//stat -c "%D %i" FILENAME
+//stat -c "%D %i" /var/log/
+//802 5767434
+//stap -v inodewatch.stp 0x8 0x02 5767434
+
+global ATTR_MODE = 1
+
+probe vfs.write, vfs.read
+{
+  # dev and ino are defined by vfs.write and vfs.read
+  if (dev == MKDEV($1,$2) # major/minor device
+      && ino == $3)
+    printf ("%s(%d) %s 0x%x/%u\n",
+      execname(), pid(), ppfunc(), dev, ino)
+}
+
+probe kernel.function("inode_setattr") {
+    dev_nr = $inode->i_sb->s_dev
+    inode_nr = $inode->i_ino
+
+    if (dev_nr == ($1 << 20 | $2) #major minor device 
+            && inode_nr == $3
+            && $attr->ia_valid & ATTR_MODE)
+        printf("%s(%d) %s 0x%x/%u %o %d\n",
+                execname(), pid(), probefunc(), dev_nr, inode_nr,
+                $attr->ia_mode, uid())
+}

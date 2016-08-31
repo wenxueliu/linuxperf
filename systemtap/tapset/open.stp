@@ -1,0 +1,8 @@
+probe begin
+{
+    printf("execname cpu tid uid pid thread_indent probefunc\n")
+}
+probe syscall.open
+{
+    printf("%s %d %d %d %d %s -> %s\n", execname(), cpu(), tid(), uid(), pid(), thread_indent(1), probefunc())
+}
