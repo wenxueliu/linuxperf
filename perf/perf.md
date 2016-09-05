@@ -33,15 +33,27 @@ debuginfo-install
 ##perf 工作流
 
 
-##查看 perf 支持的跟踪点
+##查看 perf 预定义的事件
 
 $ perf list
-
-$ perf list subsys black:*
 
 $ perf list hw
 
 $ perf list sw
+
+$ perf list pmu
+
+$ perf list "net:*"
+
+$ perf list "block"
+
+$ perf list subsys block:*
+
+$ perf list "sched:*"
+
+$ perf list "irq:*"
+
+$ perf list "syscalls:sys_exit_a*"
 
 更多参考 perf list --help
 
@@ -133,6 +145,100 @@ $ perf script
 $ debuginfo-install glibc
 
 $
+
+##收集性能统计
+
+经过前面的介绍，结合我们的需求, 我们就可以知道该具体该跟踪哪些事件, 因此,
+下面就介绍如何进行性能统计.
+
+###计数统计
+
+统计一个程序的最直观的方式就是统计调用次数, 比如, 在原理的程序上对 cache 亲和性
+更好, 那么, 如何验证呢, 没有 perf, 只能通过所用时间来从侧面验证，但是，现在有了
+perf，跑同样的数据，看看 cache-miss 的比例就知道了，从正面验证是否真正提高了
+cache 亲和性.
+
+perf stat 要点分两部分
+
+1. 事件: 通过 -e 参数指定
+2. 命令: -p 到具体的进程, -t 到具体的线程, -C 具体的 CPU, 或 sleep N 全系统
+
+perf state -e EVENT1 -e EVENT2 [-p PID] [-t TID] [-C CPUS] sleep 10
+perf state -e EVENT1 -e EVENT2 [-p PID] [-t TID] [-a] sleep 10
+
+更多参考 man perf-stat
+
+####例子
+
+$ perf stat -e cycles,instructions,cache-references,cache-misses,bus-cycles -a sleep 10
+
+$ perf stat -e cycles,instructions,cache-references,cache-misses,bus-cycles -a ls
+
+$ perf stat -e cycles,instructions,cache-references,cache-misses,bus-cycles -C 0,1 ls
+
+$ perf stat -e dTLB-loads,dTLB-load-misses,dTLB-prefetch-misses -p PID
+
+$ perf stat -e LLC-loads,LLC-load-misses,LLC-stores,LLC-prefetches COMMAND
+
+$ perf stat -e L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores COMMAND
+
+$ perf stat -e r003c -a sleep 5
+
+$ perf stat -e cycles -e cpu/event=0x0e,umask=0x01,inv,cmask=0x01/ -a sleep 5
+
+$ perf stat -e 'syscalls:sys_enter_*' -p PID
+
+$ perf stat -e 'sched:*' -p PID sleep NSecs
+
+
+###profiling
+
+perf record -F 99 COMMAND
+
+perf record -F 99 -p PID
+
+perf record -F 99 -p PID sleep 10
+
+perf record -F 99 -p PID -g -- sleep 10
+
+perf record -F 99 -p PID -g dwarf sleep 10
+
+perf record -F 99 -p PID -s -g dwarf sleep 10
+
+perf record -F 99 -ag -- sleep 10
+
+perf record -F 99 -e cpu-clock -ag -- sleep 10
+
+perf record -F 99 -ag dwarf sleep 10
+
+perf record -e L1-dcache-load-misses -c 10000 -ag -- sleep 5
+
+perf record -e LLC-load-misses -c 100 -ag -- sleep 5
+
+perf record -e cycles:k -a -- sleep 5
+
+perf record -e cycles:u -a -- sleep 5
+
+perf record -e cycles:p -a -- sleep 5
+
+perf record -b -a sleep 1
+
+perf top -F 49
+
+perf top -F 49 -ns comm,dso
+
+stdbuf -oL perf top -e net:net_dev_xmit -ns comm | strings
+
+
+
+
+
+
+
+
+
+
+
 
 
 
