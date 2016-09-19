@@ -51,6 +51,34 @@ check_kernel() {
     fi
 }
 
+check_feature() {
+    if cat /boot/config-`uname -r` | grep "CONFIG_KALLSYMS.*=y"
+    then
+        echo "your os support debuginfo, it import to kernel and user space probe"
+    else
+        echo "Sorry, your os doesn't support probe"
+        echo "rebuild or upgrade it"
+        exit 1
+    fi
+
+    if cat /boot/config-`uname -r` | grep -e "UPROBE.*=y"
+    then
+        echo "your os support user space probe completely"
+    elif cat /boot/config-`uname -r` | grep "UTRACE=y"
+    then
+        echo "your os support user space probe partially"
+    else
+        echo "Sorry, your os doesn't support user space probe"
+    fi
+
+    if cat /boot/config-`uname -r` | grep CONFIG_FRAME_POINTER=y
+    then
+        echo "your os support frame pointer, it's important to probe java program if you install java new than 8u60"
+    else
+        echo "Sorry, your os don't support frame pointer, it's important to probe java program if you install java new than 8u60"
+    fi
+}
+
 check_version() {
     if grep "release 6" /etc/redhat-release >> /dev/null;
     then
@@ -65,23 +93,42 @@ check_version() {
     fi
 }
 
-check_privilege
-check_kernel
-check_version
+install_debuginfo() {
 
-echo "check pass, continue...."
+    check_kernel
+    check_version
+    check_feature
 
-exit 0;
+    echo "check pass, continue...."
 
-kernel_version=`uname -r`
-machine=`uname -m`
+    yum install -y yum-utils
+    yum install -y kernel-devel
+    debuginfo-install -y kernel
 
-wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debug-debuginfo-${kernel_version}.rpm
-wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-${kernel_version}.rpm
-wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-common-${machine}-${kernel_version}.rpm
+    kernel_version=`uname -r`
+    machine=`uname -m`
 
-sudo rpm -ivh  kernel-debug-debuginfo-${kernel_version}.rpm kernel-debuginfo-common-${machine}-${kernel_version}.rpm kernel-debuginfo-${kernel_version}.rpm
+    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debug-debuginfo-${kernel_version}.rpm
+    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-${kernel_version}.rpm
+    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-common-${machine}-${kernel_version}.rpm
 
-yum install -y systemtap systemtap-runtime
+    rpm -ivh  kernel-debug-debuginfo-${kernel_version}.rpm kernel-debuginfo-common-${machine}-${kernel_version}.rpm kernel-debuginfo-${kernel_version}.rpm
+}
 
-stap -v -e 'probe vfs.read {printf("read performed\n"); exit()}'
+install_systemtap() {
+    yum install -y systemtap systemtap-runtime
+    stap -v -e 'probe vfs.read {printf("read performed\n"); exit()}'
+}
+
+install_perf() {
+    yum install -y perf
+}
+
+main() {
+    check_privilege
+    install_debuginfo
+    install_systemtap
+    install_perf
+}
+
+main
