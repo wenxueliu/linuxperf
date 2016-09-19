@@ -93,11 +93,24 @@ check_version() {
     fi
 }
 
+check_depend() {
+    local retry=0
+    which wget > /dev/null
+    (( $? != 0 )) &&  yum instal -y wget
+
+    which curl > /dev/null
+    (( $? != 0 )) &&  yum instal -y curl
+
+    which wget > /dev/null || which curl > /dev/null
+    (( $? != 0 )) && echo "wget or curl is missing" && exit 1
+}
+
 install_debuginfo() {
 
     check_kernel
     check_version
     check_feature
+    check_depend
 
     echo "check pass, continue...."
 
@@ -108,9 +121,27 @@ install_debuginfo() {
     kernel_version=`uname -r`
     machine=`uname -m`
 
-    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debug-debuginfo-${kernel_version}.rpm
-    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-${kernel_version}.rpm
-    wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-common-${machine}-${kernel_version}.rpm
+    which wget > /dev/null
+    if (( $? == 0 ))
+    then
+        wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debug-debuginfo-${kernel_version}.rpm
+        wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-${kernel_version}.rpm
+        wget -c http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-common-${machine}-${kernel_version}.rpm
+    else
+        which curl > /dev/null
+        if (( $? == 0 ))
+        then
+            curl http://debuginfo.centos.org/${os_version}/${machine}/kernel-debug-debuginfo-${kernel_version}.rpm \
+                -o kernel-debug-debuginfo-${kernel_version}.rpm
+
+            curl http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-${kernel_version}.rpm \
+                -o kernel-debuginfo-${kernel_version}.rpm
+
+            curl http://debuginfo.centos.org/${os_version}/${machine}/kernel-debuginfo-common-${machine}-${kernel_version}.rpm \
+                -o kernel-debuginfo-common-${machine}-${kernel_version}.rpm
+
+        fi
+    fi
 
     rpm -ivh  kernel-debug-debuginfo-${kernel_version}.rpm kernel-debuginfo-common-${machine}-${kernel_version}.rpm kernel-debuginfo-${kernel_version}.rpm
 }
