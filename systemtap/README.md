@@ -1,4 +1,11 @@
 
+##预备知识
+
+###Kprobe
+
+http://lwn.net/Articles/245671/
+http://lwn.net/Articles/132196/
+
 
 
 
@@ -28,13 +35,48 @@
 
    更多参考 http://lwn.net/Articles/315022/
 
-
-* 可以接受外边传递参数
-* hook 内核函数
-* 访问内核函数的参数, 返回值
-* 修改内核函数的返回值
+* 静态跟踪或动态跟踪
+* hook 用户态和内核态的函数
+* 对于基于 debuginfo 的探测点, 访问 hook 函数的参数, 返回值, 已经参数的某一个具体的属性
+* 修改 hook 函数的返回值
+* 将跟踪定位到某个进程，某个线程，甚至某个函数
+* 通过统配符只跟踪某一类事件
 
 ##systemtap 的原理
+
+SystemTap's goal is to provide full system observability on production systems,
+which is safe, non-intrusive, (near) zero-overhead and which allows ubiquitous
+data collection across the whole system for any interesting event that could
+happen. To achieve this goal, SystemTap defines the stap language, in which the
+user defines probes, actions, and data acquisition. The SystemTap translator and
+runtime guarantees that probe points are only placed on safe locations and that
+probe functions cannot generate too much overhead when collecting data. For dynamic
+probes on addresses inside the kernel, SystemTap uses kprobes; for dynamic probes
+in user space programs, instead, SystemTap uses its cousin uprobes. This
+provides a unified way of probing and then collecting data for observing the whole
+system. To dynamically find locations for probe points, arguments of the probed
+functions and the variables in scope at the probe point, SystemTap uses the
+debuginfo ([Dwarf](http://dwarfstd.org/)) standard debugging information that the compiler generates.
+
+
+* /boot/vmlinux-`uname -r`
+* /usr/lib/debug/lib/modules/`uname -r`/vmlinux
+* /lib/modules/`uname -r`/vmlinux
+* /lib/modules/`uname -r`/build/vmlinux
+
+##基本概念
+
+###static marker
+
+
+###probe point
+
+###tracepoints
+
+需要 DWARF debuginfo
+
+
+
 
 ##systemtap 安装
 
@@ -51,8 +93,8 @@ man stap
 /boot/System.map-`uname -r` : map starting addresses for each function to function name
 
 [RedHat Systemtap Guide](https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/pdf/SystemTap_Beginners_Guide/Red_Hat_Enterprise_Linux-7-SystemTap_Beginners_Guide-en-US.pdf)
-man stapprobes
-man stp
+
+ls /usr/share/man/man{1..8}/ | grep stap 包含了所有 stap 的 man 文档
 
 ##Example
 
@@ -70,7 +112,9 @@ stap -L 'kernel.function("sys_read")'
 
 stap -l 'kernel.function("sys_read")'
 
+列出内核所有探测点数量
 
+stap -l 'kernel.function("*")' | wc -l
 
 
 ###staprun
@@ -139,5 +183,5 @@ A: 增加 --suppress-time-limits 或　-DSTP_NO_OVERLOAD 参数
 
 https://github.com/majek/dump/tree/master/system-tap
 http://oliveryang.net/2016/07/linux-perf-tools-tips/
-
+http://lwn.net/Articles/315022/
 
