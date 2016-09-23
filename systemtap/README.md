@@ -7,8 +7,6 @@ http://lwn.net/Articles/245671/
 http://lwn.net/Articles/132196/
 
 
-
-
 ##systemtap 可以做什么
 
     SystemTap's goal is to provide full system observability on production systems,
@@ -58,6 +56,7 @@ system. To dynamically find locations for probe points, arguments of the probed
 functions and the variables in scope at the probe point, SystemTap uses the
 debuginfo ([Dwarf](http://dwarfstd.org/)) standard debugging information that the compiler generates.
 
+1. 在 systemtap 的 hook 在运行期间, 中断被禁止, 调度也被禁止
 
 * /boot/vmlinux-`uname -r`
 * /usr/lib/debug/lib/modules/`uname -r`/vmlinux
@@ -71,11 +70,14 @@ debuginfo ([Dwarf](http://dwarfstd.org/)) standard debugging information that th
 
 ###probe point
 
+主要分为两大类:
+
+同步: probes a reference point (instruction address) contextual data
+异步: no fixed reference point is related
+
 ###tracepoints
 
 需要 DWARF debuginfo
-
-
 
 
 ##systemtap 安装
@@ -95,6 +97,12 @@ man stap
 [RedHat Systemtap Guide](https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/pdf/SystemTap_Beginners_Guide/Red_Hat_Enterprise_Linux-7-SystemTap_Beginners_Guide-en-US.pdf)
 
 ls /usr/share/man/man{1..8}/ | grep stap 包含了所有 stap 的 man 文档
+
+man -k tapset::
+
+man -k probe::
+
+man -k function::
 
 ##Example
 
