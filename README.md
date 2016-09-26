@@ -2,6 +2,18 @@
 
 这篇综述也是不错的
 http://huoding.com/2016/08/18/531#comment-386419
+http://www.brendangregg.com/blog/2015-07-08/choosing-a-linux-tracer.html
+
+*
+* sysdig
+* ftrace
+* LTTng
+* perf_events
+* systemtap
+* eBPF
+
+
+
 
 ##Ktap
 
@@ -42,3 +54,8 @@ $ cat /proc/latency_stats
 $ sudo apt-get install latencytop
 
 Redhat 由于没有打开编译选项, 需要自己编译. 安装很简单.
+
+
+##参考
+
+http://dtrace.org/blogs/brendan/

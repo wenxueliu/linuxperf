@@ -39,3 +39,4 @@ $ perf list sys
 
 http://www.brendangregg.com/perf.html
 http://mail.openjdk.java.net/pipermail/hotspot-compiler-dev/2014-December/016552.html
+http://www.brendangregg.com/perf.html
