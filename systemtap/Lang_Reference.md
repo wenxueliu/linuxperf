@@ -24,6 +24,11 @@ systemtap 执行过程
 
 ##资源限制
 
+###MAXACTION
+
+Statements enable procedural control flow within functions and probe handlers. The total number of statements executed in response to any single probe event
+is limited to MAXACTION
+
 ###MAXNESTING
 
 The maximum number of recursive function call levels. The default is 10
@@ -53,6 +58,7 @@ handler. This number should be large enough for the probe handler’s own needs,
 default is 1024.
 
 一旦触发上述值的边界，就会杀掉用户进程，并删除正在运行的内核模块, 捕获的信息也会丢失
+
 
 ###guru mode
 
@@ -438,6 +444,172 @@ probe error {
     清理工作
 }
 
+##基本语法
+
+###cast
+
+Typecasting is supported using the @cast() operator. A script can define a pointer type for a long value,
+then access type members using the same syntax as with $target variables. After a pointer is saved into
+a script integer variable, the translator loses the necessary type information to access members from that
+pointer. The @cast() operator tells the translator how to read a pointer.
+
+###条件语句
+
+    %( CONDITION %? TRUE-TOKENS %)
+    %( CONDITION %? TRUE-TOKENS %: FALSE-TOKENS %)
+
+
+    probe syscall.bind {
+            printf("%s, %s\n", name, argstr)
+    %( systemtap_v >= "2.5" %?
+            printf("%d, %p, %d, %s\n", sockfd, my_addr_uaddr, addrlen, uaddr_af)
+    %:
+            printf("%d, %p, %d\n", sockfd, my_addr_uaddr, addrlen)
+    %)
+    }
+
+###基于条件的判断
+
+The predicate @defined() is available for testing whether a particular $variable/expression is resolvable at
+translation time. The following is an example of its use:
+
+    probe foo { if (@defined($bar)) log ("$bar is available here") }
+
+
+###控制流
+
+    break, continue 可用于 for, while, foreach
+
+
+    try {
+    /* do something */
+    /* trigger error like kread(0), or divide by zero, or error("foo") */
+    } catch (msg) { /* omit (msg) entirely if not interested */
+    /* println("caught error ", msg) */
+    /* handle error */
+    }
+
+    for (EXP1; EXP2; EXP3) STMT
+
+    foreach (VAR in ARRAY) STMT
+
+    foreach (VAR in ARRAY-) STMT
+
+    foreach (VAR in ARRAY+) STMT
+
+    foreach ([VAR1, VAR2, ...] in ARRAY) STMT
+
+    foreach (VAR = [VAR1, VAR2, ...] in ARRAY) STMT
+
+    foreach (VAR in ARRAY limit EXP) STMT
+
+    if (EXP) STMT1 [ else STMT2 ]
+
+    next : 从 probe 返回
+    ; (null statement)
+
+    return
+
+    while (EXP) STMT
+
+###关联数组
+
+    global ARRAY1%[<size>], ARRAY2% : 超过元素个数会覆盖就的数据
+    global ARRAY[<size>] : 超过元素个数抛出错误，退出
+    key : a comma-separated list of up to nine index index expressions
+
+   如果没有在定义时指定元素大小, 默认元素个数 MAXMAPENTRIES.
+
+    delete ARRAY[INDEX1, INDEX2, ...]
+
+    delete ARRAY
+
+    # Simple loop in arbitrary sequence:
+    foreach ([a,b] in foo)
+    fuss_with(foo[a,b])
+    # Loop in increasing sequence of value:
+    foreach ([a,b] in foo+) { ... }
+    # Loop in decreasing sequence of first key:
+    foreach ([a-,b] in foo) { ... }
+    # Print the first 10 tuples and values in the array in decreasing sequence
+    foreach (v = [i,j] in foo- limit 10)
+        printf("foo[%d,%s] = %d\n", i, j, v)
+
+    # Increment the named array slot:
+    foo [4,"hello"] ++
+    # Update a statistic:
+    processusage [uid(),execname()] ++
+    # Set a timestamp reference point:
+    times [tid()] = get_cycles()
+    # Compute a timestamp delta:
+    delta = get_cycles() - times [tid()]
+
+###统计
+
+Aggregate instances are used to collect statistics on numerical values, when it is important to accumulate
+new data quickly and in large volume. These instances operate without exclusive locks, and store only
+aggregated stream statistics. Aggregates make sense only for global variables. They are stored individually
+or as elements of an associative array.
+
+
+writes[execname()] <<< count
+
+@count(s)
+@sum(s)
+@min(s)
+@max(s)
+@avg(s)
+
+
+@hist linear(v,L,H,W)
+
+represents a linear histogram of aggregate v, where L and H represent the lower
+and upper end of a range of values and W represents the width (or size) of each bucket
+within the range. The low and high values can be negative, but the overall difference (high minus low) must
+be positive. The width parameter must also be positive.
+
+-DHIST ELISION=<num>, where <num> specifies how many empty
+buckets at the top and bottom of the range to print.
+The default is 2. A <num> of 0 removes all empty
+buckets. A negative <num> disables removal.
+
+@hist_log
+
+represents a base-2 logarithmic histogram.
+
+###打印
+
+print() : 打印单值
+printf (fmt:string, ...) : 打印格式字符串 %[flags][width][.precision][length]specifier
+
+    d or i  : Signed decimal
+    o       : Unsigned octal
+    s       : String
+    u       : Unsigned decimal
+    x       : Unsigned hexadecimal (lowercase letters)
+    X       : Unsigned hexadecimal (uppercase letters)
+    p       : Pointer address
+    b       : Writes a binary value as text using the computer’s native byte order. The field width specifies the number of bytes to write. Valid specifications are %b, %1b, %2b, %4b and %8b. The default width is 8 (64-bits).
+    %       : A % followed by another % character will write % to stdout.
+
+    probe begin {
+        for (i = 97; i < 110; i++)
+        printf("%3d: %1b%1b%1b\n", i, i, i-32, i-64)
+        exit()
+    }
+
+printd (delimiter:string, ...) : 以分割符分割后续字符串
+
+    printd("/", "one", "two", "three", 4, 5, 6)
+
+输出
+
+    one/two/three/4/5/6
+
+printdln (delimiter:string, ...) : 同 printd, 末尾增加一个换行
+println() : 同 print, 末尾增加一个换行
+sprint:string () : 返回字符串, 而不是打印
+sprintf:string (fmt:string, ...) : 返回格式化字符串
 
 ##参考
 
